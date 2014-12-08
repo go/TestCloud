@@ -32,21 +32,17 @@
     - vim
     - tmux
     - htop
-    - locales
     - rsync
     - tar
     - tzdata
-    - openssh-client
     - ntp
     - ntpdate
-    - build-essential
     - git
     - wget
     - curl
     - zsh
   sudo: yes
   notify:
-    - Setup locale
     - Start NTP
 
 - name: Install SSH server(Ubuntu)
