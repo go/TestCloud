@@ -1,0 +1,9 @@
+---
+- name: Restart MySQL server(Ubuntu)
+  service: name=mysql state=restarted enabled=yes
+
+- name: Restart MySQL server(RedHat)
+  service: name=mysqld state=restarted enabled=yes
+
+- name: Restart iptables(RedHat)
+  service: name=iptables state=restarted

@@ -1,0 +1,116 @@
+---
+#- name: Download deb packages
+#  when: ansible_os_family == "Ubuntu"
+#  apt_key: url=http://cloudstack.apt-get.eu/release.asc state=present
+#  sudo: yes
+
+- name: Download packages(RedHat)
+  when: ansible_os_family == "RedHat"
+  get_url: dest=/home/vagrant/{{ item }} url={{ jenkins_url }}{{ item }}
+  with_items:
+    - cloudstack-agent-4.6.0-SNAPSHOT.el6.x86_64.rpm
+    - cloudstack-awsapi-4.6.0-SNAPSHOT.el6.x86_64.rpm
+    - cloudstack-baremetal-agent-4.6.0-SNAPSHOT.el6.x86_64.rpm
+    - cloudstack-cli-4.6.0-SNAPSHOT.el6.x86_64.rpm
+    - cloudstack-common-4.6.0-SNAPSHOT.el6.x86_64.rpm
+    - cloudstack-management-4.6.0-SNAPSHOT.el6.x86_64.rpm
+    - cloudstack-usage-4.6.0-SNAPSHOT.el6.x86_64.rpm
+
+- name: Install basic packages(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  action: apt pkg={{item}} state=latest
+  register: cloudstackinstalled
+  with_items:
+    - cloudstack-management
+    - cloudstack-usage
+    - cloudstack-agent
+    - cloudstack-common
+
+- name: Install basic packages(RedHat)
+  when: ansible_os_family == "RedHat"
+  yum: name={{ item }}
+  register: cloudstackinstalled
+  with_items:
+    - cloudstack-common-4.6.0-SNAPSHOT.el6.x86_64.rpm
+    - cloudstack-usage-4.6.0-SNAPSHOT.el6.x86_64.rpm
+    - cloudstack-agent-4.6.0-SNAPSHOT.el6.x86_64.rpm
+
+- name: Check package installed(RedHat)
+  shell: rpm -qa cloudstack-management
+  register: managementinstalled
+
+- name: Install Management,AWSAPI packages(RedHat)
+  when: ansible_os_family == "RedHat" and managementinstalled.stdout == ""
+  shell: yum install -y cloudstack-awsapi-4.6.0-SNAPSHOT.el6.x86_64.rpm cloudstack-management-4.6.0-SNAPSHOT.el6.x86_64.rpm
+  register: cloudstackinstalled
+
+- name: Setup CloudStack database
+  shell: cloudstack-setup-databases cloud:cloudpassword@localhost --deploy-as=root -i {{ ansible_ssh_host }}
+  when: cloudstackinstalled|success
+  run_once: true
+  args:
+    creates: /var/lib/mysql/cloud
+
+- name: Setup CloudStack management server
+  shell: cloudstack-setup-management
+  run_once: true
+  args:
+    creates: /var/log/cloudstack/management/setupManagement.log
+
+- name: Setup KVM template
+  shell: cd /opt && wget http://jenkins.buildacloud.org/job/build-systemvm64-master/lastSuccessfulBuild/artifact/tools/appliance/dist/systemvm64template-master-4.6.0-kvm.qcow2.bz2 && /usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt -m /export/secondary -f /opt/systemvm64template-master-4.6.0-kvm.qcow2.bz2 -h kvm -o localhost -r cloud -d cloudpassword
+  when: cloudstackinstalled|success
+  run_once: true
+  args:
+    creates: /opt/systemvm64template-master-4.6.0-kvm.qcow2.bz2
+
+- name: Stop tomcat6
+  service: name=tomcat6 state=stopped enabled=no
+
+- name: Start CloudStack management server
+  service: name=cloudstack-management state=started enabled=yes
+
+- name: Start CloudStack usage server
+  service: name=cloudstack-usage state=started enabled=yes
+
+- name: Start CloudStack management server
+  service: name=cloudstack-agent state=started enabled=yes
+
+- name: Disable apparmour for libvirtd(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  file: src=/etc/apparmor.d/usr.sbin.libvirtd dest=/etc/apparmor.d/disable/usr.sbin.libvirtd owner=root group=root state=link
+
+- name: Disable apparmour for libvirtd aa-helper(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  file: src=/etc/apparmor.d/usr.lib.libvirt.virt-aa-helper dest=/etc/apparmor.d/disable/usr.lib.libvirt.virt-aa-helper owner=root group=root state=link
+
+- name: Apparmour parser on libvirtd(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  shell: (apparmor_parser -R /etc/apparmor.d/usr.sbin.libvirtd || true) && (apparmor_parser -R /etc/apparmor.d/usr.lib.libvirt.virt-aa-helper || true)
+
+- name: Fix iptables for udp traffic
+  shell: iptables -A INPUT -s {{ ansible_default_ipv4["network"] }}/16 -m state --state NEW -p udp --dport {{ item }} -j ACCEPT
+  with_items: [111, 32769, 892, 875, 662]
+
+- name: Fix iptables for tcp traffic
+  shell: iptables -A INPUT -s {{ ansible_default_ipv4["network"] }}/16 -m state --state NEW -p tcp --dport {{ item }} -j ACCEPT
+  with_items: [111, 2049, 32803, 892, 875, 662]
+
+- name: Install iptables-persistent(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  apt: pkg=iptables-persistent state=installed
+  sudo: yes
+
+- name: Have UFW allow ports for KVM(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  ufw: rule=allow proto=tcp from_ip=any to_ip=any port={{ item }}
+  sudo: yes
+  with_items:
+    - 22
+    - 1009
+    - 1798
+    - 16509
+    - 5900:6100
+    - 49152:49216
+
+

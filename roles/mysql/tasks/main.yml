@@ -1,0 +1,51 @@
+---
+- name: Mysql | Set root password(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  shell: echo mysql-server mysql-server/root_password password {{ mysql_root_password }} | sudo debconf-set-selections
+  run_once: true
+  args:
+    creates: /var/lib/mysql
+
+- name: Mysql | Set root repassword(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  shell: echo mysql-server mysql-server/root_password_again password {{ mysql_root_password }} | sudo debconf-set-selections
+  run_once: true
+  args:
+    creates: /var/lib/mysql
+
+- name: Install basic packages(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  apt: pkg=mysql-server state=latest
+  register: mysqlserverinstalled
+
+- name: Install basic packages(RedHat)
+  when: ansible_os_family == "RedHat"
+  yum: name=mysql-server state=latest
+  register: mysqlserverinstalled
+
+- name: Setup MySQL config(Ubuntu)
+  when: ansible_os_family == "Ubuntu" and mysqlserverinstalled|success
+  template: src=my.cnf_ubuntu.j2 dest=/etc/mysql/my.cnf owner=root group=root mode=644
+  notify:
+    - Restart MySQL server(Ubuntu)
+
+- name: Setup MySQL config(RedHat)
+  when: ansible_os_family == "RedHat" and mysqlserverinstalled|success
+  template: src=my.cnf_redhat.j2 dest=/etc/my.cnf owner=root group=root mode=644
+  notify:
+    - Restart MySQL server(RedHat)
+
+- name: Have UFW allow mysql
+  when: ansible_os_family == "Ubuntu"
+  ufw: rule=allow port=3306 proto=any
+
+#- name: generate iptables
+#  when: ansible_os_family == "RedHat"
+#  shell: iptables-save > /etc/sysconfig/iptables
+#
+#- name: configure iptables for mysqld
+#  when: ansible_os_family == "RedHat"
+#  lineinfile: dest=/etc/sysconfig/iptables state=present create=yes
+#              insertafter="^:OUTPUT " line="-A INPUT -p tcp --dport 3306 -j ACCEPT"
+#  notify:
+#    - Restart iptables(RedHat)

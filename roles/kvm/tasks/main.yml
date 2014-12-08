@@ -1,0 +1,31 @@
+---
+- name: Install basic packages(RedHat)
+  when: ansible_os_family == "RedHat"
+  yum: name={{ item }} state=latest
+  register: kvminstalled
+  with_items:
+    - bridge-utils
+    - mysql
+    - qemu-kvm
+    - libvirt
+    - pm-utils
+
+- name: Setup Bridge interfaces(RedHat)
+  when: ansible_os_family == "RedHat" and kvminstalled|success
+  template: src={{ item.src }} dest=/etc/sysconfig/network-scripts/{{ item.dest }} owner=root group=root mode=644
+  with_items:
+    - { src: "ifcfg-eth0.j2",     dest: "ifcfg-eth0" }
+    - { src: "ifcfg-cloudbr0.j2", dest: "ifcfg-cloudbr0" }
+    - { src: "ifcfg-cloudbr1.j2", dest: "ifcfg-cloudbr1" }
+
+- name: Setup libvirtd config
+  copy: src=libvirtd.conf dest=/etc/libvirt/libvirtd.conf owner=root group=root mode=644
+
+- name: Setup qemu config
+  copy: src=qemu.conf dest=/etc/libvirt/qemu.conf owner=root group=root mode=644
+
+- name: Fix libvirtd opts(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  shell: sed -i -e 's/libvirtd_opts="-d"/libvirtd_opts="-d -l"/' /etc/init/libvirt-bin.conf
+  notify:
+    - Restart libvirt-bin

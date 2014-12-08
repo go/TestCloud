@@ -1,0 +1,46 @@
+---
+- name: Install basic packages(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  action: apt pkg={{item}} state=latest
+  with_items:
+    - nfs-kernel-server
+    - quota
+
+- name: Install basic packages(RedHat)
+  when: ansible_os_family == "RedHat"
+  yum: name={{item}} state=latest
+  with_items:
+    - nfs-utils
+    - quota
+
+#- name: Create NFS directory
+#  file: dest=/export owner=root group=root state=directory
+
+- name: Mount disk
+  mount: name=/export src='/dev/sdc1' fstype=ext4 state=mounted
+
+- name: Ensure /export/primary exists
+  file: dest=/export/primary owner=root group=root state=directory
+
+- name: Ensure /export/secondary exists
+  file: dest=/export/secondary owner=root group=root state=directory
+
+- name: Setup nfs exports
+  copy: src=exports dest=/etc/exports owner=root group=root mode=644
+
+- name: Fix nfs and quota default config(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  copy: src={{ item }} dest=/etc/default/{{ item }} owner=root group=root mode=644
+  with_items:
+    - nfs-kernel-server
+    - nfs-common
+    - quota
+
+- name: Add lockd config(Ubuntu)
+  when: ansible_os_family == "Ubuntu"
+  shell: echo options lockd nlm_udpport=32769 nlm_tcpport=32803 > /etc/modprobe.d/lockd.conf
+  run_once: true
+
+- name: Fix nfs default config(RedHat)
+  when: ansible_os_family == "RedHat"
+  copy: src=nfs dest=/etc/sysconfig/nfs owner=root group=root mode=644

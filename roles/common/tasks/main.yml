@@ -1,0 +1,62 @@
+---
+- name: Install basic packages(Ubuntu)
+  when: ansible_os_family == 'Ubuntu'
+  action: apt pkg={{item}} state=latest install_recommends=no
+  with_items:
+    - sudo
+    - vim
+    - tmux
+    - htop
+    - locales
+    - rsync
+    - tar
+    - tzdata
+    - openssh-client
+    - ntp
+    - ntpdate
+    - build-essential
+    - git
+    - wget
+    - curl
+    - zsh
+  sudo: yes
+  notify:
+    - Setup locale
+    - Start NTP
+
+- name: Install basic packages(Redhat)
+  when: ansible_os_family == 'RedHat'
+  yum: name={{item}} state=latest
+  with_items:
+    - sudo
+    - vim
+    - tmux
+    - htop
+    - locales
+    - rsync
+    - tar
+    - tzdata
+    - openssh-client
+    - ntp
+    - ntpdate
+    - build-essential
+    - git
+    - wget
+    - curl
+    - zsh
+  sudo: yes
+  notify:
+    - Setup locale
+    - Start NTP
+
+- name: Install SSH server(Ubuntu)
+  when: ansible_os_family == 'Ubuntu'
+  apt: pkg=openssh-server state=latest
+  register: sshinstalled
+  sudo: yes
+  notify:
+    - Start SSH
+
+- name: Configure hosts
+  lineinfile: dest=/etc/hosts state=present
+              line="{{ ansible_eth0['ipv4']['address'] }}   {{ ansible_hostname }} {{ ansible_fqdn }}"

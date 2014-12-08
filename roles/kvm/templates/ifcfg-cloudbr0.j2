@@ -1,0 +1,13 @@
+DEVICE=cloudbr0
+TYPE=Bridge
+ONBOOT=yes
+BOOTPROTO=none
+IPADDR={{ ansible_ssh_host }}
+NETMASK={{ ansible_default_ipv4["netmask"] }}
+GATEWAY={{ ansible_default_ipv4["gateway"] }}
+DNS1={{ ansible_default_ipv4["gateway"] }}
+DNS2=8.8.8.8
+IPV6INIT=no
+IPV6_AUTOCONF=no
+DELAY=5
+STP=yes

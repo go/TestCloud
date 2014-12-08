@@ -1,0 +1,10 @@
+---
+- hosts: cloudstack
+  gather_facts: True
+  sudo: true
+  roles:
+    - common
+      #- kvm
+      #- nfs
+      #- mysql
+      #- management
