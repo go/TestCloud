@@ -35,6 +35,10 @@
   notify:
     - Restart MySQL server(RedHat)
 
+- name: WA for MySQL service
+  when: ansible_os_family == "RedHat" and mysqlserverinstalled|success
+  service: name=mysqld state=restarted enabled=yes
+
 - name: Have UFW allow mysql
   when: ansible_os_family == "Ubuntu"
   ufw: rule=allow port=3306 proto=any
