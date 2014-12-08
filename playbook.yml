@@ -4,7 +4,7 @@
   sudo: true
   roles:
     - common
-      #- kvm
-      #- nfs
-      #- mysql
-      #- management
+    - kvm
+    - nfs
+    - mysql
+    - management
