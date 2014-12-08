@@ -6,5 +6,5 @@
     - common
     - kvm
     - nfs
-    - mysql
+    # - mysql
     - management
