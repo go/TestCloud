@@ -13,8 +13,11 @@
     - nfs-utils
     - quota
 
+- name: Partitioning added deviced
+  shell: parted -s -a optimal /dev/sdc mklabel gpt -- mkpart primary ext4 1 -1
+
 - name: Create ext4 filesystem
-  filesystem: fstype=ext4 dev=/dev/sdc
+  filesystem: fstype=ext4 dev=/dev/sdc1
 
 - name: Mount disk
   mount: name=/export src='/dev/sdc1' fstype=ext4 state=mounted
