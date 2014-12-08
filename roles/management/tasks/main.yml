@@ -58,11 +58,11 @@
     creates: /var/log/cloudstack/management/setupManagement.log
 
 - name: Setup KVM template
-  shell: cd /opt && wget http://jenkins.buildacloud.org/job/build-systemvm64-master/lastSuccessfulBuild/artifact/tools/appliance/dist/systemvm64template-master-4.6.0-kvm.qcow2.bz2 && /usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt -m /export/secondary -f /opt/systemvm64template-master-4.6.0-kvm.qcow2.bz2 -h kvm -o localhost -r cloud -d cloudpassword
+  shell: cd /export && wget http://jenkins.buildacloud.org/job/build-systemvm64-master/lastSuccessfulBuild/artifact/tools/appliance/dist/systemvm64template-master-4.6.0-kvm.qcow2.bz2 && /usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt -m /export/secondary -f /export/systemvm64template-master-4.6.0-kvm.qcow2.bz2 -h kvm -o localhost -r cloud -d cloudpassword
   when: cloudstackinstalled|success
   run_once: true
   args:
-    creates: /opt/systemvm64template-master-4.6.0-kvm.qcow2.bz2
+    creates: /export/systemvm64template-master-4.6.0-kvm.qcow2.bz2
 
 - name: Stop tomcat6
   service: name=tomcat6 state=stopped enabled=no
